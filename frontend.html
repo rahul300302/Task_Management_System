@@ -8,6 +8,10 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
   <style>
     #map { height: 500px; }
+    .custom-icon {
+      width: 32px;
+      height: 32px;
+    }
   </style>
 </head>
 <body>
@@ -22,8 +26,8 @@
   <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
   <script>
     const vehicleId = "234";
-    let origin_lat =12.921264262987568
-    let origin_lon =  77.62135031281166
+    let origin_lat = 12.921264262987568;
+    let origin_lon = 77.62135031281166;
 
     // Initialize the map
     var map = L.map('map').setView([origin_lat, origin_lon], 13);
@@ -34,8 +38,15 @@
     }).addTo(map);
 
     // Create a marker for the destination (origin point)
-    var destinationMarker = L.marker([origin_lat, origin_lon]).addTo(map);
-    destinationMarker.bindPopup("Destination").openPopup();
+    // var destinationMarker = L.marker([origin_lat, origin_lon]).addTo(map);
+    // destinationMarker.bindPopup("Destination").openPopup();
+
+    // Custom bike icon for the vehicle
+    const bikeIcon = L.icon({
+      iconUrl: 'img/Clocation.png', // Replace with the URL/path to your bike icon
+      iconSize: [32, 32], // Icon size
+      iconAnchor: [16, 32] // Anchor point
+    });
 
     // Initialize Leaflet Routing Machine for calculating directions
     var routeControl;
@@ -47,8 +58,8 @@
         map.removeControl(routeControl);
       }
 
-      // Add marker for the vehicle's current location
-      let vehicleMarker = L.marker([lat, lon]).addTo(map);
+      // Add marker for the vehicle's current location with bike icon
+      let vehicleMarker = L.marker([lat, lon], { icon: bikeIcon }).addTo(map);
       vehicleMarker.bindPopup("Vehicle").openPopup();
 
       // Create a new route from the vehicle's current position to the destination
@@ -57,41 +68,44 @@
           L.latLng(lat, lon),
           L.latLng(origin_lat, origin_lon)
         ],
-        routeWhileDragging: true
+        routeWhileDragging: true,
+        lineOptions: {
+          styles: [
+            { color: 'green', opacity: 1, weight: 4, dashArray: '5, 5' } // Green dotted line
+          ]
+        }
       }).addTo(map);
 
-      // Get the distance of the route
-      routeControl.on('routesfound', function(e) {
+      // Get the distance and time of the route
+      routeControl.on('routesfound', function (e) {
         var route = e.routes[0];
         var distance = route.summary.totalDistance / 1000; // Distance in kilometers
-        var time = route.summary.totalTime / 60; 
+        var time = route.summary.totalTime / 60; // Time in minutes
         document.getElementById('distance').textContent = `Distance: ${distance.toFixed(2)} km`;
         document.getElementById('time').textContent = `Estimated Time: ${time.toFixed(2)} minutes`;
       });
     }
 
     // Get current position and update vehicle location every 5 seconds
-    setInterval(() => {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const { latitude, longitude } = position.coords;
-        document.getElementById("texts").textContent = `Latitude: ${latitude}, Longitude: ${longitude}`;
+    navigator.geolocation.getCurrentPosition((position) => {
+      const { latitude, longitude } = position.coords;
+      document.getElementById("texts").textContent = `Latitude: ${latitude}, Longitude: ${longitude}`;
 
-        // Update vehicle location on the map and show directions
-        updateVehicleLocation(latitude, longitude);
-
-        // Optionally, you can also send the location to your server
-        fetch(`https://live-vehicle-tracking.vercel.app/location`, {
+      // Update vehicle location on the map and show directions
+      updateVehicleLocation(latitude, longitude);
+// https://live-vehicle-tracking.vercel.app/location
+      setInterval(() => {
+        fetch(`http://localhost:3000/location`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ vehicleId, latitude, longitude }),
         });
-
-      }, (error) => {
-        console.error("Error getting location:", error);
-      });
-    }, 5000); // Update every 5 seconds
+      }, 5000); // Update every 5 seconds
+    }, (error) => {
+      console.error("Error getting location:", error);
+    });
   </script>
 </body>
 </html>

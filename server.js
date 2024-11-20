@@ -36,6 +36,8 @@ app.post("/location", async (req, res) => {
     setInterval(()=>{
       io.emit("location-update", { vehicleId, latitude, longitude });
     },5000)
+    console.log(vehicleId, latitude, longitude);
+    
     res.status(200).send({ success: true,data:{ vehicleId, latitude, longitude } });
   } catch (error) {
     console.error("Error saving location:", error);
