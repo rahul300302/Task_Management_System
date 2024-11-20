@@ -3,109 +3,128 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vehicle Location Tracker with Directions</title>
+  <title>Real-Time Vehicle Tracker with Origin Route</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
   <style>
     #map { height: 500px; }
-    .custom-icon {
-      width: 32px;
-      height: 32px;
-    }
+    body { font-family: Arial, sans-serif; }
   </style>
 </head>
 <body>
-  <h1>Vehicle Location Tracker with Directions</h1>
-  <p id="status">Tracking your location...</p>
-  <p id="texts"></p>
+  <h1>Real-Time Vehicle Tracker with Origin Route</h1>
+  <p id="texts">Fetching location...</p>
   <p id="distance"></p>
   <p id="time"></p>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
-    const vehicleId = "234";
-    let origin_lat = 12.921264262987568;
-    let origin_lon = 77.62135031281166;
+    const serverUrl = "http://localhost:3000/location"; // Backend server URL
+    const vehicleId = "1234"; // Example vehicle ID
+    const origin_lat =  12.921264262987568;
+    let origin_lon = 77.62135031281166; // Origin longitude
 
-    // Initialize the map
-    var map = L.map('map').setView([origin_lat, origin_lon], 13);
+    let map, vehicleMarker, routeControl;
 
-    // Add OpenStreetMap tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    // Initialize map
+    function initMap() {
+      map = L.map('map').setView([origin_lat, origin_lon], 13);
 
-    // Create a marker for the destination (origin point)
-    // var destinationMarker = L.marker([origin_lat, origin_lon]).addTo(map);
-    // destinationMarker.bindPopup("Destination").openPopup();
+      // Add OpenStreetMap tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
 
-    // Custom bike icon for the vehicle
+      // Add origin marker
+      L.marker([origin_lat, origin_lon], {
+        icon: L.icon({
+          iconUrl: 'img/origin.png', // Replace with your origin icon
+          iconSize: [32, 32],
+        }),
+      })
+        .addTo(map)
+        .bindPopup("Customer").openPopup();
+
+    }
+
+    // Custom bike icon
     const bikeIcon = L.icon({
-      iconUrl: 'img/Clocation.png', // Replace with the URL/path to your bike icon
-      iconSize: [32, 32], // Icon size
-      iconAnchor: [16, 32] // Anchor point
+      iconUrl: 'img/Clocation.png', // Replace with your vehicle icon
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
     });
 
-    // Initialize Leaflet Routing Machine for calculating directions
-    var routeControl;
-
-    // Function to update the vehicle's position on the map and calculate directions
-    function updateVehicleLocation(lat, lon) {
-      // Clear the previous route if any
+    // Update the route between the vehicle and the origin
+    function updateRoute(vehicleCoords, originCoords) {
       if (routeControl) {
         map.removeControl(routeControl);
       }
 
-      // Add marker for the vehicle's current location with bike icon
-      let vehicleMarker = L.marker([lat, lon], { icon: bikeIcon }).addTo(map);
-      vehicleMarker.bindPopup("Vehicle").openPopup();
-
-      // Create a new route from the vehicle's current position to the destination
       routeControl = L.Routing.control({
         waypoints: [
-          L.latLng(lat, lon),
-          L.latLng(origin_lat, origin_lon)
+          L.latLng(vehicleCoords[0], vehicleCoords[1]),
+          L.latLng(originCoords[0], originCoords[1]),
         ],
         routeWhileDragging: true,
         lineOptions: {
           styles: [
-            { color: 'green', opacity: 1, weight: 4, dashArray: '5, 5' } // Green dotted line
-          ]
-        }
+            { color: 'green', opacity: 1, weight: 4, dashArray: '5, 5' }, // Green dotted line
+          ],
+        },
       }).addTo(map);
 
-      // Get the distance and time of the route
       routeControl.on('routesfound', function (e) {
-        var route = e.routes[0];
-        var distance = route.summary.totalDistance / 1000; // Distance in kilometers
-        var time = route.summary.totalTime / 60; // Time in minutes
+        const route = e.routes[0];
+        const distance = route.summary.totalDistance / 1000; // Distance in km
+        const time = route.summary.totalTime / 60; // Time in minutes
         document.getElementById('distance').textContent = `Distance: ${distance.toFixed(2)} km`;
         document.getElementById('time').textContent = `Estimated Time: ${time.toFixed(2)} minutes`;
       });
     }
 
+    // Update vehicle location on map and backend
+    function updateVehicleLocation(latitude, longitude) {
+      if (!vehicleMarker) {
+        vehicleMarker = L.marker([latitude, longitude], { icon: bikeIcon }).addTo(map);
+      } else {
+        vehicleMarker.setLatLng([latitude, longitude]);
+      }
+    //   vehicleMarker.bindPopup("Vehicle").openPopup();
+
+      updateRoute([latitude, longitude], [origin_lat, origin_lon]);
+
+      fetch(serverUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vehicleId, latitude, longitude }),
+      }).catch((err) => console.error('Error sending location:', err));
+    }
+
     // Get current position and update vehicle location every 5 seconds
     navigator.geolocation.getCurrentPosition((position) => {
       const { latitude, longitude } = position.coords;
-      document.getElementById("texts").textContent = `Latitude: ${latitude}, Longitude: ${longitude}`;
+      document.getElementById("texts").textContent = `Your Location: Latitude: ${latitude}, Longitude: ${longitude}`;
 
-      // Update vehicle location on the map and show directions
       updateVehicleLocation(latitude, longitude);
-// https://live-vehicle-tracking.vercel.app/location
-// http://localhost:3000/location
+
       setInterval(() => {
-        fetch(`https://live-vehicle-tracking.vercel.app/location`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ vehicleId, latitude, longitude }),
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const { latitude, longitude } = pos.coords;
+          document.getElementById("texts").textContent = `Your Location: Latitude: ${latitude}, Longitude: ${longitude}`;
+        //   updateVehicleLocation(latitude, longitude);
         });
       }, 5000); // Update every 5 seconds
     }, (error) => {
       console.error("Error getting location:", error);
+      document.getElementById("texts").textContent = "Unable to fetch location.";
+    });
+
+    // Initialize the map
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
     });
   </script>
 </body>
