@@ -94,8 +94,9 @@
       // Update vehicle location on the map and show directions
       updateVehicleLocation(latitude, longitude);
 // https://live-vehicle-tracking.vercel.app/location
+// http://localhost:3000/location
       setInterval(() => {
-        fetch(`http://localhost:3000/location`, {
+        fetch(`https://live-vehicle-tracking.vercel.app/location`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
