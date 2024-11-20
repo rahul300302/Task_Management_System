@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vehicle Location Tracker with Directions</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+  <style>
+    #map { height: 500px; }
+  </style>
+</head>
+<body>
+  <h1>Vehicle Location Tracker with Directions</h1>
+  <p id="status">Tracking your location...</p>
+  <p id="texts"></p>
+  <p id="distance"></p>
+  <p id="time"></p>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+  <script>
+    const vehicleId = "234";
+    let origin_lat =12.921264262987568
+    let origin_lon =  77.62135031281166
+
+    // Initialize the map
+    var map = L.map('map').setView([origin_lat, origin_lon], 13);
+
+    // Add OpenStreetMap tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Create a marker for the destination (origin point)
+    var destinationMarker = L.marker([origin_lat, origin_lon]).addTo(map);
+    destinationMarker.bindPopup("Destination").openPopup();
+
+    // Initialize Leaflet Routing Machine for calculating directions
+    var routeControl;
+
+    // Function to update the vehicle's position on the map and calculate directions
+    function updateVehicleLocation(lat, lon) {
+      // Clear the previous route if any
+      if (routeControl) {
+        map.removeControl(routeControl);
+      }
+
+      // Add marker for the vehicle's current location
+      let vehicleMarker = L.marker([lat, lon]).addTo(map);
+      vehicleMarker.bindPopup("Vehicle").openPopup();
+
+      // Create a new route from the vehicle's current position to the destination
+      routeControl = L.Routing.control({
+        waypoints: [
+          L.latLng(lat, lon),
+          L.latLng(origin_lat, origin_lon)
+        ],
+        routeWhileDragging: true
+      }).addTo(map);
+
+      // Get the distance of the route
+      routeControl.on('routesfound', function(e) {
+        var route = e.routes[0];
+        var distance = route.summary.totalDistance / 1000; // Distance in kilometers
+        var time = route.summary.totalTime / 60; 
+        document.getElementById('distance').textContent = `Distance: ${distance.toFixed(2)} km`;
+        document.getElementById('time').textContent = `Estimated Time: ${time.toFixed(2)} minutes`;
+      });
+    }
+
+    // Get current position and update vehicle location every 5 seconds
+    setInterval(() => {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        document.getElementById("texts").textContent = `Latitude: ${latitude}, Longitude: ${longitude}`;
+
+        // Update vehicle location on the map and show directions
+        updateVehicleLocation(latitude, longitude);
+
+        // Optionally, you can also send the location to your server
+        fetch(`https://harmonious-longma-03820f.netlify.app/location`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ vehicleId, latitude, longitude }),
+        });
+
+      }, (error) => {
+        console.error("Error getting location:", error);
+      });
+    }, 5000); // Update every 5 seconds
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+<div id="map"></div>
+<script>
+    setInterval(()=>{
+        navigator.geolocation.getCurrentPosition(position=>{
+        const{latitude,longitude,altitude,heading,speed,accuracy}=position.coords
+        console.log(altitude,heading,speed,accuracy);
+        map.innerHTML=altitude,heading,speed,accuracy
+        map.innerHTML='<iframe width="700" height="300" src="https://maps.google.com/maps?q='+latitude+','+longitude+'&amp;z=15&amp;output=embed"></iframe>'
+        console.log(latitude,longitude);
+    })
+    },5000)
+    
+</script>
+<script>
+    const watchId = navigator.geolocation.watchPosition(position => {
+  const { latitude, longitude } = position.coords;
+  // Show a map centered at latitude / longitude.
+  console.log("watchID-"+watchId);
+  
+});
+</script>
