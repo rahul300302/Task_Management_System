@@ -51,10 +51,12 @@ app.post("/location", async (req, res) => {
 });
 
 // Serve the frontend
-app.get("/location", (req, res) => {
+app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend.html"));
 });
-
+app.get("/location", (req, res) => {
+  res.sendFile(path.join(__dirname, "gps_live_location.html"));
+});
 // Handle WebSocket connections
 io.on("connection", (socket) => {
   console.log("A user connected");
