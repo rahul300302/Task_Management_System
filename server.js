@@ -51,7 +51,7 @@ app.post("/location", async (req, res) => {
 });
 
 // Serve the frontend
-app.get("/", (req, res) => {
+app.get("/location", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend.html"));
 });
 
